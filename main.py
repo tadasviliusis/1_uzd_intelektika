@@ -1,13 +1,12 @@
-import networkx as nx
-import matplotlib.pyplot as plt
-import time
-
-
 import matplotlib
+import networkx as nx
+import time
+import matplotlib.pyplot as plt
 
 matplotlib.use('TkAgg')
 
-graph = {
+
+maze1 = {
     'A': ['B', 'C'],
     'B': ['D', 'E'],
     'E': ['F'],
@@ -16,69 +15,101 @@ graph = {
     'F': []
 }
 
-G = nx.Graph()
-for node, neighbors in graph.items():
-    for neighbor in neighbors:
-        G.add_edge(node, neighbor)
+maze2 = {
+    'A': ['B'],
+    'B': ['A', 'C', 'D'],
+    'C': ['B', 'E'],
+    'D': ['B', 'F'],
+    'E': ['C', 'G'],
+    'F': ['D'],
+    'G': ['E']
+}
 
-pos = nx.spring_layout(G)  # Node positions for all nodes
+maze3 = {
+    '1': ['2', '4'],
+    '2': ['1', '3', '5'],
+    '3': ['2', '6'],
+    '4': ['1', '5', '7'],
+    '5': ['2', '4', '6', '8'],
+    '6': ['3', '5', '9'],
+    '7': ['4', '8'],
+    '8': ['5', '7', '9'],
+    '9': ['6', '8']
+}
+
+def generate_graph_from_maze(maze):
+    G = nx.Graph()
+    for node, neighbors in maze.items():
+        for neighbor in neighbors:
+            G.add_edge(node, neighbor)
+    return G
+
+def draw_graph_with_path(ax, G, path, pos, title="Graph"):
+    ax.clear()
+    nx.draw(G, pos, with_labels=True, node_size=700, node_color='skyblue', edge_color='k', ax=ax)
+    path_edges = list(zip(path, path[1:]))
+    nx.draw_networkx_nodes(G, pos, nodelist=path, node_color='lightgreen', ax=ax)
+    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='green', width=2, ax=ax)
+    ax.set_title(title)
+    plt.pause(0.5)
+
+def update_graph_with_path(G, visited, pos, title="Graph"):
+
+    nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
+    nx.draw_networkx_nodes(G, pos, nodelist=visited, node_color='lightgreen')
+    nx.draw_networkx_labels(G, pos)
+    plt.title(title)
+    plt.draw()
+    plt.pause(0.5)
 
 
-def draw_graph(highlight_nodes=[], highlight_color='lightblue'):
-    """
-    Graph drawing
-    """
-    plt.clf()
-    nx.draw(G, pos, with_labels=True, node_color='skyblue', edge_color='k', node_size=700, font_size=20,
-            font_weight='bold')
-    if highlight_nodes:
-        nx.draw_networkx_nodes(G, pos, nodelist=highlight_nodes, node_color=highlight_color)
-    plt.show(block=False)
-    plt.pause(1)
-
-
-def bfs_visual(graph, start):
-    visited = []
-    queue = []
-    visited.append(start)
-    queue.append(start)
+def bfs_path(graph, start, ax, G, pos):
+    visited = [start]
+    queue = [start]
+    draw_graph_with_path(ax, G, visited, pos, f"BFS Visiting: {start}")
 
     while queue:
-        m = queue.pop(0)
-        draw_graph(highlight_nodes=visited + [m], highlight_color='lightgreen')
-        print(m, end=" ")
-
-        for neighbour in graph[m]:
+        vertex = queue.pop(0)
+        for neighbour in graph[vertex]:
             if neighbour not in visited:
                 visited.append(neighbour)
                 queue.append(neighbour)
-        time.sleep(1)  # Sleep to slow down the visualization for observation
+                draw_graph_with_path(ax, G, visited, pos, f"BFS Visiting: {neighbour}")
 
 
-def dfs_visual(graph, node, visited=None):
+def dfs_path(graph, start, ax, G, pos, visited=None):
     if visited is None:
-        visited = []
-    if node not in visited:
-        print(node, end=" ")
-        visited.append(node)
-        draw_graph(highlight_nodes=visited, highlight_color='red')
-        for neighbour in graph[node]:
-            dfs_visual(graph, neighbour, visited)
-        time.sleep(1)  # Sleep to slow down the visualization for observation
+        visited = [start]
+    else:
+        visited.append(start)
+
+    draw_graph_with_path(ax, G, visited, pos, f"DFS Visiting: {start}")
+
+    for neighbour in graph[start]:
+        if neighbour not in visited:
+            dfs_path(graph, neighbour, ax, G, pos, visited)
 
 
 
-start_time = time.time()
-print("Breadth-First Search Visualization:")
-bfs_visual(graph, 'A')
-bfs_execution_time = time.time() - start_time
-print("\nBFS Execution Time with Visualization:", bfs_execution_time, "seconds")
+for i, (maze_name, maze) in enumerate([('maze1', maze1), ('maze2', maze2), ('maze3', maze3)], start=1):
+    print(f"Performance for {maze_name}:")
+    G = generate_graph_from_maze(maze)
+    pos = nx.spring_layout(G)
 
-plt.clf()
+    # Create a new figure for each maze
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    start_counter = time.perf_counter()
+    bfs_path(maze, next(iter(maze)), ax, G, pos)
+    bfs_duration = time.perf_counter() - start_counter
+    print(f"BFS took {bfs_duration:.5f} seconds.")
+
+    start_counter = time.perf_counter()
+    dfs_path(maze, next(iter(maze)), ax, G, pos)
+    dfs_duration = time.perf_counter() - start_counter
+    print(f"DFS took {dfs_duration:.5f} seconds.")
+
+    plt.close(fig)
 
 
-start_time = time.time()
-print("\nDepth-First Search Visualization:")
-dfs_visual(graph, 'A')
-dfs_execution_time = time.time() - start_time
-print("\nDFS Execution Time with Visualization:", dfs_execution_time, "seconds")
+plt.show()
